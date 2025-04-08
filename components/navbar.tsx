@@ -1,14 +1,23 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Building, Calendar, LogIn, LogOut, Menu, User, Home, BookOpen } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/components/auth-provider"
-import { useState } from "react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Building,
+  Calendar,
+  LogIn,
+  LogOut,
+  Menu,
+  User,
+  Home,
+  BookOpen,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/auth-provider";
+import { useState } from "react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,53 +25,56 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
 export default function Navbar() {
-  const { user, logout } = useAuth()
-  const pathname = usePathname()
-  const [open, setOpen] = useState(false)
+  const { user, logout } = useAuth();
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
 
   const routes = [
     { href: "/", label: "Home", icon: Home },
     { href: "/spaces", label: "Spaces", icon: Building },
-  ]
+  ];
 
   const userRoutes = [
     { href: "/dashboard", label: "Dashboard", icon: BookOpen },
     { href: "/reservations", label: "My Reservations", icon: Calendar },
     { href: "/profile", label: "Profile", icon: User },
-  ]
+  ];
 
-  const activeRoutes = user ? [...routes, ...userRoutes] : routes
+  const activeRoutes = user ? [...routes, ...userRoutes] : routes;
 
   const NavItems = () => (
     <>
       {activeRoutes.map((route) => {
-        const Icon = route.icon
+        const Icon = route.icon;
         return (
           <Link
             key={route.href}
             href={route.href}
             className={cn(
               "flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground",
-              pathname === route.href && "text-blue-600 font-medium",
+              pathname === route.href && "text-blue-600 font-medium"
             )}
             onClick={() => setOpen(false)}
           >
             <Icon className="h-4 w-4" />
             {route.label}
           </Link>
-        )
+        );
       })}
     </>
-  )
+  );
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-          <div className="p-1 rounded-md bg-blue-100">
+        <Link
+          href="/"
+          className="ml-4 flex items-center gap-2 font-bold text-xl py-2 px-3 rounded-md hover:bg-blue-50 transition-colors"
+        >
+          <div className="p-2 rounded-md bg-blue-100 flex items-center justify-center">
             <Building className="h-5 w-5 text-blue-600" />
           </div>
           <span className="text-blue-600">Co</span>Space
@@ -77,7 +89,10 @@ export default function Navbar() {
             <div className="flex items-center gap-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Button
+                    variant="ghost"
+                    className="relative h-8 w-8 rounded-full"
+                  >
                     <Avatar className="h-8 w-8 border border-blue-100">
                       <AvatarFallback className="bg-blue-50 text-blue-600">
                         {user.name.charAt(0).toUpperCase()}
@@ -88,8 +103,12 @@ export default function Navbar() {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                      <p className="text-sm font-medium leading-none">
+                        {user.name}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -118,7 +137,11 @@ export default function Navbar() {
                   Login
                 </Link>
               </Button>
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700" asChild>
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700"
+                asChild
+              >
                 <Link href="/register">Register</Link>
               </Button>
             </div>
@@ -126,14 +149,22 @@ export default function Navbar() {
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="outline" size="icon" className="rounded-full w-8 h-8">
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full w-8 h-8"
+              >
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="right">
               <div className="flex flex-col gap-6 py-6">
-                <Link href="/" className="flex items-center gap-2 font-bold text-xl" onClick={() => setOpen(false)}>
+                <Link
+                  href="/"
+                  className="flex items-center gap-2 font-bold text-xl"
+                  onClick={() => setOpen(false)}
+                >
                   <div className="p-1 rounded-md bg-blue-100">
                     <Building className="h-5 w-5 text-blue-600" />
                   </div>
@@ -167,15 +198,17 @@ export default function Navbar() {
                       </Avatar>
                       <div>
                         <p className="font-medium">{user.name}</p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {user.email}
+                        </p>
                       </div>
                     </div>
                     <Button
                       variant="outline"
                       className="w-full"
                       onClick={() => {
-                        logout()
-                        setOpen(false)
+                        logout();
+                        setOpen(false);
                       }}
                     >
                       <LogOut className="h-4 w-4 mr-2" />
@@ -189,6 +222,5 @@ export default function Navbar() {
         </div>
       </div>
     </header>
-  )
+  );
 }
-
