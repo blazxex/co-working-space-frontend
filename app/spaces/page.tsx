@@ -34,7 +34,7 @@ export default function SpacesPage() {
     const fetchSpaces = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_URL}/api/v1/spaces`, {
+        const res = await fetch(`${API_URL}/api/v1/spaces/`, {
           credentials: "include",
         });
         const data = await res.json();
