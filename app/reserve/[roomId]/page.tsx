@@ -138,7 +138,7 @@ export default function ReserveRoomPage() {
           title: "Reservation successful",
           description: "Your room has been reserved",
         });
-        router.push("/reservation");
+        router.push("/reservations");
       } else {
         toast({
           variant: "destructive",
