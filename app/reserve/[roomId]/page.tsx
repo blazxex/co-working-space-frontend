@@ -21,6 +21,13 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Room = {
   _id: string;
@@ -34,16 +41,16 @@ type Room = {
   };
 };
 
+const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const minutes = ["00", "30"];
+
 const formSchema = z.object({
-  startTime: z.string().min(1, {
-    message: "Start time is required.",
-  }),
-  endTime: z.string().min(1, {
-    message: "End time is required.",
-  }),
-  capacity: z.coerce.number().min(1, {
-    message: "Capacity must be at least 1.",
-  }),
+  date: z.string().min(1, { message: "Required" }),
+  startHour: z.string().min(1, { message: "Required" }),
+  startMinute: z.string().min(1, { message: "Required" }),
+  endHour: z.string().min(1, { message: "Required" }),
+  endMinute: z.string().min(1, { message: "Required" }),
+  capacity: z.coerce.number().min(1, { message: "Minimum 1" }),
 });
 
 export default function ReserveRoomPage() {
@@ -55,12 +62,16 @@ export default function ReserveRoomPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      startTime: "",
-      endTime: "",
+      date: new Date().toISOString().split("T")[0],
+      startHour: "",
+      startMinute: "",
+      endHour: "",
+      endMinute: "",
       capacity: 1,
     },
   });
@@ -70,19 +81,15 @@ export default function ReserveRoomPage() {
       router.push("/login");
     }
   }, [user, authLoading, router]);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
   useEffect(() => {
     const fetchRoom = async () => {
       try {
         setLoading(true);
-
         const res = await fetch(`${API_URL}/api/v1/rooms/${roomId}`);
-        console.log(res);
         const data = await res.json();
-
         if (data.success) {
           setRoom(data.data);
-          form.setValue("capacity", 1);
         } else {
           toast({
             variant: "destructive",
@@ -104,20 +111,27 @@ export default function ReserveRoomPage() {
     if (roomId) {
       fetchRoom();
     }
-  }, [roomId, toast, form]);
+  }, [roomId, toast]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!room) return;
 
+    const startTime = new Date(
+      `${values.date}T${values.startHour}:${values.startMinute}:00`
+    ).toISOString();
+    const endTime = new Date(
+      `${values.date}T${values.endHour}:${values.endMinute}:00`
+    ).toISOString();
+
     const reserveData = {
       roomId: roomId,
-      ...values,
+      startTime,
+      endTime,
+      capacity: values.capacity,
     };
-    console.log(reserveData);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
     try {
       setSubmitting(true);
-      console.log("Submitting reservation data:", reserveData);
       const res = await fetch(
         `${API_URL}/api/v1/rooms/${roomId}/reservation/`,
         {
@@ -129,9 +143,7 @@ export default function ReserveRoomPage() {
           credentials: "include",
         }
       );
-
       const data = await res.json();
-      console.log(data);
 
       if (data.success) {
         toast({
@@ -147,7 +159,6 @@ export default function ReserveRoomPage() {
         });
       }
     } catch (error: any) {
-      console.log(error.message);
       toast({
         variant: "destructive",
         title: "Reservation failed",
@@ -166,32 +177,13 @@ export default function ReserveRoomPage() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  if (!room) {
-    return (
-      <div className="container py-10">
-        <div className="flex flex-col items-center justify-center py-10">
-          <Building className="h-12 w-12 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-medium">Room not found</h2>
-          <p className="text-muted-foreground mt-1">
-            The room you are looking for does not exist
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/spaces">Back to Spaces</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  if (!user || !room) return null;
 
   return (
     <div className="container py-10">
       <div className="mx-auto max-w-md">
         <Link
-          href={`/ spaces / ${room.space._id}`}
+          href={`/spaces/${room.space._id}`}
           className="text-blue-600 hover:underline mb-4 inline-block"
         >
           &larr; Back to {room.space.name}
@@ -202,19 +194,19 @@ export default function ReserveRoomPage() {
             <CardTitle className="text-2xl">Reserve Room</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-1">
+            <div>
               <p className="text-sm text-muted-foreground">Room</p>
               <p className="font-medium">{room.name}</p>
             </div>
-            <div className="space-y-1">
+            <div>
               <p className="text-sm text-muted-foreground">Location</p>
               <p className="font-medium">{room.space.name}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Maximum Capacity</p>
+            <div>
+              <p className="text-sm text-muted-foreground">Max Capacity</p>
               <p className="font-medium">{room.capacity} people</p>
             </div>
-            <div className="space-y-1">
+            <div>
               <p className="text-sm text-muted-foreground">Available Hours</p>
               <p className="font-medium">
                 {room.space.openTime} - {room.space.closeTime}
@@ -226,32 +218,128 @@ export default function ReserveRoomPage() {
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-4"
               >
+                {/* Date */}
                 <FormField
                   control={form.control}
-                  name="startTime"
+                  name="date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Start Time</FormLabel>
+                      <FormLabel>Date</FormLabel>
                       <FormControl>
-                        <Input type="datetime-local" {...field} />
+                        <Input type="date" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="endTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>End Time</FormLabel>
-                      <FormControl>
-                        <Input type="datetime-local" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
+                {/* Start Time */}
+                <FormItem>
+                  <FormLabel>Start Time</FormLabel>
+                  <div className="flex gap-2">
+                    <FormField
+                      control={form.control}
+                      name="startHour"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Hour" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {hours.map((h) => (
+                              <SelectItem key={h} value={h}>
+                                {h}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="startMinute"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Minute" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {minutes.map((m) => (
+                              <SelectItem key={m} value={m}>
+                                {m}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                </FormItem>
+
+                {/* End Time */}
+                <FormItem>
+                  <FormLabel>End Time</FormLabel>
+                  <div className="flex gap-2">
+                    <FormField
+                      control={form.control}
+                      name="endHour"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Hour" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {hours.map((h) => (
+                              <SelectItem key={h} value={h}>
+                                {h}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="endMinute"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Minute" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {minutes.map((m) => (
+                              <SelectItem key={m} value={m}>
+                                {m}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                </FormItem>
+
+                {/* Capacity */}
                 <FormField
                   control={form.control}
                   name="capacity"
@@ -270,6 +358,7 @@ export default function ReserveRoomPage() {
                     </FormItem>
                   )}
                 />
+
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? (
                     <>

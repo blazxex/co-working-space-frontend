@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -21,7 +20,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/components/auth-provider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/lib/api";
+
 type Reservation = {
   _id: string;
   startTime: string;
@@ -34,13 +41,16 @@ type Reservation = {
   };
 };
 
+const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const minutes = ["00", "30"];
+
 const formSchema = z.object({
-  startTime: z.string().min(1, {
-    message: "Start time is required.",
-  }),
-  endTime: z.string().min(1, {
-    message: "End time is required.",
-  }),
+  date: z.string().min(1, { message: "Required" }),
+  startHour: z.string().min(1, { message: "Required" }),
+  startMinute: z.string().min(1, { message: "Required" }),
+  endHour: z.string().min(1, { message: "Required" }),
+  endMinute: z.string().min(1, { message: "Required" }),
+  capacity: z.coerce.number().min(1, { message: "Minimum 1 person" }),
 });
 
 export default function EditReservationPage() {
@@ -52,12 +62,17 @@ export default function EditReservationPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      startTime: "",
-      endTime: "",
+      date: "",
+      startHour: "",
+      startMinute: "",
+      endHour: "",
+      endMinute: "",
+      capacity: 1,
     },
   });
 
@@ -71,29 +86,25 @@ export default function EditReservationPage() {
     const fetchReservation = async () => {
       try {
         setLoading(true);
-
         const res = await api.get(`/api/v1/reservation/${reservationId}`);
-
-        // const text = await res.text(); // safer: see the raw response
-        // console.log("Raw response text:", text);
-
-        // const data = JSON.parse(text);
-        // console.log(data, "Reservation 1");
         const data = res;
 
         if (data.success) {
-          setReservation(data.data);
+          const r = data.data;
+          setReservation(r);
 
-          // Format date for datetime-local input
-          const startTime = new Date(data.data.startTime)
-            .toISOString()
-            .slice(0, 16);
-          const endTime = new Date(data.data.endTime)
-            .toISOString()
-            .slice(0, 16);
+          const start = new Date(r.startTime);
+          const end = new Date(r.endTime);
 
-          form.setValue("startTime", startTime);
-          form.setValue("endTime", endTime);
+          form.setValue("date", start.toISOString().split("T")[0]);
+          form.setValue("startHour", String(start.getHours()).padStart(2, "0"));
+          form.setValue(
+            "startMinute",
+            String(start.getMinutes()).padStart(2, "0")
+          );
+          form.setValue("endHour", String(end.getHours()).padStart(2, "0"));
+          form.setValue("endMinute", String(end.getMinutes()).padStart(2, "0"));
+          form.setValue("capacity", r.capacity);
         } else {
           toast({
             variant: "destructive",
@@ -116,9 +127,16 @@ export default function EditReservationPage() {
       fetchReservation();
     }
   }, [reservationId, toast, form]);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!reservation) return;
+
+    const startTime = new Date(
+      `${values.date}T${values.startHour}:${values.startMinute}:00`
+    ).toISOString();
+    const endTime = new Date(
+      `${values.date}T${values.endHour}:${values.endMinute}:00`
+    ).toISOString();
 
     try {
       setSubmitting(true);
@@ -129,20 +147,22 @@ export default function EditReservationPage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(values),
+          body: JSON.stringify({
+            startTime,
+            endTime,
+            capacity: values.capacity,
+          }),
         }
       );
 
       const data = await res.json();
-      console.log(data, "data");
       if (data.success) {
         toast({
           title: "Reservation updated",
           description: "Your reservation has been updated successfully",
         });
-        router.push("/reservation");
+        router.push("/reservations");
       } else {
-        // Generic error fallback
         toast({
           variant: "destructive",
           title: "Update failed",
@@ -168,11 +188,7 @@ export default function EditReservationPage() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  if (!reservation) {
+  if (!user || !reservation) {
     return (
       <div className="container py-10">
         <div className="flex flex-col items-center justify-center py-10">
@@ -204,13 +220,13 @@ export default function EditReservationPage() {
             <CardTitle className="text-2xl">Edit Reservation</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-1">
+            <div>
               <p className="text-sm text-muted-foreground">Room</p>
               <p className="font-medium">{reservation.room.name}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Capacity</p>
-              <p className="font-medium">{reservation.capacity} people</p>
+            <div>
+              <p className="text-sm text-muted-foreground">Max Capacity</p>
+              <p className="font-medium">{reservation.room.capacity} people</p>
             </div>
 
             <Form {...form}>
@@ -218,32 +234,147 @@ export default function EditReservationPage() {
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-4"
               >
+                {/* Date */}
                 <FormField
                   control={form.control}
-                  name="startTime"
+                  name="date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Start Time</FormLabel>
+                      <FormLabel>Date</FormLabel>
                       <FormControl>
-                        <Input type="datetime-local" {...field} />
+                        <Input type="date" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                {/* Start Time */}
+                <FormItem>
+                  <FormLabel>Start Time</FormLabel>
+                  <div className="flex gap-2">
+                    <FormField
+                      control={form.control}
+                      name="startHour"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Hour" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {hours.map((h) => (
+                              <SelectItem key={h} value={h}>
+                                {h}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="startMinute"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Minute" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {minutes.map((m) => (
+                              <SelectItem key={m} value={m}>
+                                {m}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                </FormItem>
+
+                {/* End Time */}
+                <FormItem>
+                  <FormLabel>End Time</FormLabel>
+                  <div className="flex gap-2">
+                    <FormField
+                      control={form.control}
+                      name="endHour"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Hour" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {hours.map((h) => (
+                              <SelectItem key={h} value={h}>
+                                {h}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="endMinute"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Minute" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {minutes.map((m) => (
+                              <SelectItem key={m} value={m}>
+                                {m}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                </FormItem>
+
+                {/* Capacity */}
                 <FormField
                   control={form.control}
-                  name="endTime"
+                  name="capacity"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>End Time</FormLabel>
+                      <FormLabel>Number of People</FormLabel>
                       <FormControl>
-                        <Input type="datetime-local" {...field} />
+                        <Input
+                          type="number"
+                          min={1}
+                          max={reservation.room.capacity}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? (
                     <>
