@@ -109,17 +109,25 @@ export default function ReserveRoomPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!room) return;
 
+    const reserveData = {
+      roomId: roomId,
+      ...values
+    }
+    console.log(reserveData);
+    const API_URL = process.env.NEXT_PUBLIC_API_URL;
     try {
       setSubmitting(true);
-      const res = await fetch(`/api/v1/rooms/${roomId}/reservation`, {
+      const res = await fetch(`${API_URL}/api/v1/reservation/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(reserveData),
+        credentials: "include",
       });
 
       const data = await res.json();
+      console.log(data);
 
       if (data.success) {
         toast({
@@ -134,7 +142,8 @@ export default function ReserveRoomPage() {
           description: data.message || "Failed to reserve room",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.log(error.message);
       toast({
         variant: "destructive",
         title: "Reservation failed",
@@ -178,7 +187,7 @@ export default function ReserveRoomPage() {
     <div className="container py-10">
       <div className="mx-auto max-w-md">
         <Link
-          href={`/spaces/${room.space._id}`}
+          href={`/ spaces / ${room.space._id}`}
           className="text-blue-600 hover:underline mb-4 inline-block"
         >
           &larr; Back to {room.space.name}
