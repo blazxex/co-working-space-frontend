@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -71,9 +72,14 @@ export default function EditReservationPage() {
       try {
         setLoading(true);
 
-        const res = await api.get(`/api/v1/reservations/${reservationId}`);
+        const res = await api.get(`/api/v1/reservation/${reservationId}`);
 
-        const data = await res.json();
+        // const text = await res.text(); // safer: see the raw response
+        // console.log("Raw response text:", text);
+
+        // const data = JSON.parse(text);
+        // console.log(data, "Reservation 1");
+        const data = res;
 
         if (data.success) {
           setReservation(data.data);
@@ -117,7 +123,7 @@ export default function EditReservationPage() {
     try {
       setSubmitting(true);
       const res = await fetch(
-        `${API_URL}/api/v1/reservations/${reservationId}`,
+        `${API_URL}/api/v1/reservation/${reservationId}`,
         {
           method: "PUT",
           headers: {
@@ -128,14 +134,15 @@ export default function EditReservationPage() {
       );
 
       const data = await res.json();
-
+      console.log(data, "data");
       if (data.success) {
         toast({
           title: "Reservation updated",
           description: "Your reservation has been updated successfully",
         });
-        router.push("/reservations");
+        router.push("/reservation");
       } else {
+        // Generic error fallback
         toast({
           variant: "destructive",
           title: "Update failed",

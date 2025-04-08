@@ -111,20 +111,24 @@ export default function ReserveRoomPage() {
 
     const reserveData = {
       roomId: roomId,
-      ...values
-    }
+      ...values,
+    };
     console.log(reserveData);
     const API_URL = process.env.NEXT_PUBLIC_API_URL;
     try {
       setSubmitting(true);
-      const res = await fetch(`${API_URL}/api/v1/reservation/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(reserveData),
-        credentials: "include",
-      });
+      console.log("Submitting reservation data:", reserveData);
+      const res = await fetch(
+        `${API_URL}/api/v1/rooms/${roomId}/reservation/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(reserveData),
+          credentials: "include",
+        }
+      );
 
       const data = await res.json();
       console.log(data);
@@ -134,7 +138,7 @@ export default function ReserveRoomPage() {
           title: "Reservation successful",
           description: "Your room has been reserved",
         });
-        router.push("/reservations");
+        router.push("/reservation");
       } else {
         toast({
           variant: "destructive",

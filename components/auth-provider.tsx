@@ -47,11 +47,10 @@ type RegisterData = {
   role?: "user" | "admin";
 };
 
-
 type updateProfileData = {
-  name?: string
-  phoneNumber?: string
-}
+  name?: string;
+  phoneNumber?: string;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -99,15 +98,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log("Logging in with email and password");
       const fbRes = await signInWithEmailAndPassword(auth, email, password);
       const userData = fbRes.user;
       const accessToken = await userData.getIdToken(); // ✅ Correct way to get token
+      console.log(accessToken);
       setLoading(true);
       const res = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ email, password }),
         credentials: "include",
@@ -164,7 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         phonenumber: userData.phoneNumber,
       };
 
-      const fbRes = await createUserWithEmailAndPassword(auth,
+      const fbRes = await createUserWithEmailAndPassword(
+        auth,
         userData.email,
         userData.password
       );
@@ -176,7 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
         },
 
         body: JSON.stringify(backendUserData),
@@ -257,32 +259,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userData = result.user;
       const accessToken = await userData.getIdToken();
       const additionalInfo = getAdditionalUserInfo(result);
-      console.log(accessToken)
+      console.log(accessToken);
 
       const registerUserData = {
         email: userData.email,
-        role: "user"
-      }
+        role: "user",
+      };
 
       let res;
       if (additionalInfo?.isNewUser) {
-        console.log("create new user with OAuth")
+        console.log("create new user with OAuth");
         res = await fetch(`${API_URL}/api/v1/auth/Register`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify(registerUserData),
           credentials: "include",
         });
       } else {
-        console.log("login with OAuth")
+        console.log("login with OAuth");
         res = await fetch(`${API_URL}/api/v1/auth/Login`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify(registerUserData),
           credentials: "include",
@@ -339,19 +341,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         credentials: "include", // sends cookies
         body: JSON.stringify(updatedData),
-      })
+      });
 
       if (!res.ok) {
-        throw new Error("Failed to update profile")
+        throw new Error("Failed to update profile");
       }
 
       const updatedUser = await res.json();
-      setUser(updatedUser.data)
+      setUser(updatedUser.data);
     } catch (err) {
-      console.error("Update failed", err)
-      throw err
+      console.error("Update failed", err);
+      throw err;
     }
-  }
+  };
 
   return (
     <AuthContext.Provider
@@ -377,4 +379,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
