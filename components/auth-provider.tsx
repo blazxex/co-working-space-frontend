@@ -7,7 +7,14 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 
 // Add these imports at the top
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  getAdditionalUserInfo,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 // Define API_URL constant
@@ -27,6 +34,7 @@ type AuthContextType = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
+  updateProfile: (updateData: updateProfileData) => Promise<void>;
   logout: () => void;
   loginWithGoogle: () => Promise<void>;
 };
@@ -38,6 +46,12 @@ type RegisterData = {
   phoneNumber: string;
   role?: "user" | "admin";
 };
+
+
+type updateProfileData = {
+  name?: string
+  phoneNumber?: string
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -85,11 +99,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      const fbRes = await signInWithEmailAndPassword(auth, email, password);
+      const userData = fbRes.user;
+      const accessToken = await userData.getIdToken(); // ✅ Correct way to get token
       setLoading(true);
       const res = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
         },
         body: JSON.stringify({ email, password }),
         credentials: "include",
@@ -146,16 +164,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         phonenumber: userData.phoneNumber,
       };
 
+      const fbRes = await createUserWithEmailAndPassword(auth,
+        userData.email,
+        userData.password
+      );
+      const fbUserData = fbRes.user;
+      const accessToken = await fbUserData.getIdToken();
+      console.log(accessToken);
+
       const res = await fetch(`${API_URL}/api/v1/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
         },
+
         body: JSON.stringify(backendUserData),
         credentials: "include",
       });
 
       const data = await res.json();
+      console.log(data);
 
       if (data.success) {
         // After successful registration, fetch user data
@@ -225,19 +254,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
 
-      // Get the Google ID token
-      const idToken = await result.user.getIdToken();
+      const userData = result.user;
+      const accessToken = await userData.getIdToken();
+      const additionalInfo = getAdditionalUserInfo(result);
+      console.log(accessToken)
 
-      // Send the token to your backend
-      const res = await fetch(`${API_URL}/api/v1/auth/firebase-login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ idToken }),
-        credentials: "include",
-      });
+      const registerUserData = {
+        email: userData.email,
+        role: "user"
+      }
 
+      let res;
+      if (additionalInfo?.isNewUser) {
+        console.log("create new user with OAuth")
+        res = await fetch(`${API_URL}/api/v1/auth/Register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`
+          },
+          body: JSON.stringify(registerUserData),
+          credentials: "include",
+        });
+      } else {
+        console.log("login with OAuth")
+        res = await fetch(`${API_URL}/api/v1/auth/Login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`
+          },
+          body: JSON.stringify(registerUserData),
+          credentials: "include",
+        });
+      }
       const data = await res.json();
 
       if (data.success) {
@@ -280,6 +330,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProfile = async (updatedData: updateProfileData) => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/users/me`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // sends cookies
+        body: JSON.stringify(updatedData),
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to update profile")
+      }
+
+      const updatedUser = await res.json();
+      setUser(updatedUser.data)
+    } catch (err) {
+      console.error("Update failed", err)
+      throw err
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -287,6 +360,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         login,
         register,
+        updateProfile,
         logout,
         loginWithGoogle,
       }}
@@ -303,3 +377,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
