@@ -202,6 +202,17 @@ export default function ReservationsPage() {
                       Edit
                     </Link>
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    asChild
+                  >
+                    <Link href={`/reservations/${reservation._id}`}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Show QR Code
+                    </Link>
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
