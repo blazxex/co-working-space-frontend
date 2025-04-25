@@ -262,9 +262,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log(accessToken);
 
       const registerUserData = {
+        name: "user",
         email: userData.email,
+        phoneNumber: "0000000000",
         role: "user",
       };
+      console.log(registerUserData);
 
       let res;
       if (additionalInfo?.isNewUser) {
